@@ -1,0 +1,49 @@
+name: Build iOS IPA (TrollStore)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '15.0'
+
+    - name: Install XcodeGen
+      run: brew install xcodegen
+
+    - name: Generate Xcode Project
+      run: xcodegen generate
+
+    - name: Build iOS App (No Signing)
+      run: |
+        xcodebuild build -project tvbox.xcodeproj -scheme tvbox -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" PRODUCT_BUNDLE_IDENTIFIER=com.tvbox.swift
+
+    - name: Package IPA
+      run: |
+        mkdir -p Payload
+        cp -r build/Release-iphoneos/tvbox.app Payload/
+        zip -r TVBox-TrollStore.ipa Payload
+        ls -lh TVBox-TrollStore.ipa
+
+    - name: Upload IPA
+      uses: actions/upload-artifact@v4
+      with:
+        name: TVBox-TrollStore-IPA
+        path: TVBox-TrollStore.ipa
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v1.0-${{ github.run_number }}
+        files: TVBox-TrollStore.ipa
+        body: TVBox-Swift iOS IPA for TrollStore
